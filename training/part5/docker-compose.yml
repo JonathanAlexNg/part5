@@ -1,0 +1,16 @@
+
+version: '3'
+
+
+services:
+
+  # Take custom image build from dockerfile
+  service-1:
+    image: my_ros
+    container_name: matplot
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./:/workspace/repo
+    environment:
+      - DISPLAY=unix$DISPLAY
+      - QT_X11_NO_MITSHM=1
