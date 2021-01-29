@@ -6,11 +6,12 @@ services:
 
   # Take custom image build from dockerfile
   service-1:
-    image: my_ros
-    container_name: matplot
+    image: ros_img
+    container_name: ros_cont
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ./:/workspace/repo
+#      - ./:/home/catkin_ws
     environment:
       - DISPLAY=unix$DISPLAY
       - QT_X11_NO_MITSHM=1
+    command: sleep infinity

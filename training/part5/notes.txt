@@ -1,30 +1,144 @@
-https://roboticsbackend.com/what-is-a-ros-node/
+
+sudo docker start ros_cont
+sudo docker exec -it ros_cont bash
 
 
-sudo docker start -t <exited container_name>
+If you don't want to add an editor just to make a few small changes (e.g., change the Tomcat configuration), you can just use:
+	# docker cp <container>:/path/to/file.ext .
+
+which copies it to your local machine (to your current directory). Then edit the file locally using your favorite editor, and then do a
+	# docker cp file.ext <container>:/path/to/file.ext
+to replace the old file.
+
+sudo docker cp ros_cont:/home/catkin_ws/src/first_pkg/py_node.py .
+sudo docker cp py_node.py ros_cont:/home/catkin_ws/src/first_pkg/py_node.py
 
 
-*** PART 1 ***
+
+
+	*** PART 1 *************
+
 Create a Docker development environment and then create a catkin workspace. Develop a ROS package that has both Python and C++ nodes and build it.
 
+	--------------
 
-Run docker image: ros (is ubuntu+ros), once container is up, exec -it <container>
+Run docker image: ros:noetic (is ubuntu+ros), exec commands inside the container
+If 'ros', gave ros:foxy which is ROS2.
 Inside the container, set up the workspace.
+
+
+[USE DOCKERFILE]
+
+cd /home/catkin_ws/src
+catkin_create_pkg first_pkg roscpp rospy std_msgs
+cd /home/catkin_ws
+catkin_make
+
+cd /home/catkin_ws/src/first_pkg
+touch py_node.py
+touch cpp_node.cpp	# Edit them in VS Code
+cd /home/catkin_ws
+catkin_make		# Edit CMakeLists.txt first! Refer to LINKS
+
+	(in another terminal tab)
+	sudo docker exec -it ros_cont bash
+	roscore
+	
+rosrun first_pkg py_node.py	# Both nodes work! Yay!
+rosrun first_pkg cpp_node	# Named node cpp_node in CMakeLists.txt
+
+
+
+	*** PART 2 *************
+
+In the ROS package, develop a library that has this simple function: add
+Show that you can create another package that produces a Python node that uses this function.
+
+	--------------
+
+# Follow steps in LINKS: setup.py, __init__.py etc
+
+catkin_create_pkg second_pkg roscpp rospy std_msgs
+touch function.py	# Imports function and uses it.
+			# Edit CMakeLists for pkg2
+
+catkin_make
+source ~/.bashrc	# My Dockerfile echo sourced into .bashrc, but nvr source bashrc
+rosrun second_pkg function.py
+
+
+
+	*** PART 3 *************
+
+Extend the above two packages to build a node that satisfies the following requirements:
+   - Read from the ROS parameter server, a parameter called gain;
+   - Provide a service that accepts two numbers, and return the value calculated by this equation gain * (x + y);
+   - Provides a service, that when the user calls, toggles the node to publish a ROS topic. The thread should be running at 100hz.
+
+	--------------
+
+rosparam list
+rosparam set /gain 20		# New 'gain' param with value '20'
+
+		# Alternatively, create a yaml file in a pkg with params and use "rosparam load my_param.yaml"
+
+touch part3_node.py			# In pkg2
+chmod +x part3_node.py
+catkin_make (in ws)
+rosrun second_pkg part3_node.py
+
+
+
+*** PART 4 *************
+
+Develop a build system using pyinvoke that build the two ROS packages and copy the build artifacts into another Docker image. This image should be named super-ros-node.
+When this docker image is ran using the below command, the node developed in Part 3 should be running.
+
+docker run super-ros-node
+
+	--------------
+
+
+
+
+
+
+
+
+
+LINKS:
+https://roboticsbackend.com/what-is-a-ros-node/
+http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29	# python node
+http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28python%29	# cpp node
+https://industrial-training-master.readthedocs.io/en/melodic/_source/session1/Creating-a-ROS-Package-and-Node.html # cpp node
+https://roboticsbackend.com/ros-import-python-module-from-another-package/	# import from another package
+http://www.clearpathrobotics.com/assets/guides/kinetic/ros/ROS%20Parameter%20Server.html	# rosparam
+https://roboticsbackend.com/ros-param-yaml-format/	# rosparam with yaml.
+
+
+NOTES:
+Must manually edit CMakeLists.txt, and package.xml before you can run nodes!
+Be sure to source ~/.bashrc before completing part 2
+Always chmod +x <filename> for your nodes! (Done in same dir)
+
+
+
+
+
+
+
+
+
+
 
 
 [container -it, no Dockerfile involved]
 
-sudo docker pull ros
-sudo docker run -it ros bash
+sudo docker pull ros:noetic
+sudo docker run -it ros:noetic bash
 
-sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
-sudo apt update
-sudo apt-get install ros-noetic-catkin
-sudo apt-get install cmake python3-catkin-pkg python3-empy python-nose python-setuptools libgtest-dev build-essential
-sudo apt-get install ros-noetic-roscpp ros-noetic-rospy
 
-source /opt/ros/noetic/setup.bash	# Came default with foxy, now have noetic
+source /opt/ros/noetic/setup.bash
 echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
 source ~/.bashrc
 
@@ -33,75 +147,19 @@ mkdir -p ~/catkin_ws/src	# Make workspace
 cd ~/catkin_ws/
 catkin_make			# 1st time will create CMakeLists.txt in /src
 
+
 ***source devel/setup.bash	# Overlay workspace with setup script
 ***echo $/home/alexng/catkin_ws/src:/opt/ros/noetic/share
 
 
-<make package with dependencies of Python and C++>
+<make package with dependencies of Python and C++ ; and build>
 cd ~/catkin_ws/src
 catkin_create_pkg first_pkg roscpp rospy std_msgs
 cd ~/catkin_ws
 catkin_make
-. ~/catkin_ws/devel/setup.bash
-
-<build that package>
 
 
+<make 2 nodes, one py and one c++>
 
 
-
-
-
-
-
-
-[terminal]
-sudo docker pull ros
-sudo docker run -it ros bash
-
-source ros_entrypoint.sh
-
-sudo apt-get install ros-noetic-catkin
-sudo apt-get install cmake python-catkin-pkg python-empy python-nose python-setuptools libgtest-dev build-essential
-mkdir build && cd build && cmake ../ && make && sudo make install
-
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws/
-catkin_make
-
-[new if use dockerfile]
-
-
-
-
- # Catkin (A build system, will use to create packages)
- 
- INSTALLATION
- sudo apt-get install ros-noetic-catkin
- sudo apt-get install cmake python-catkin-pkg python-empy python-nose python-setuptools libgtest-dev build-essential
- mkdir build && cd build && cmake ../ && make && sudo make install
- 
- WORKSPACE
- $ mkdir -p ~/catkin_ws/src
- $ cd ~/catkin_ws/
- $ catkin_make
- 
- 
- 
- # Packages
- 
- Catkin packages consists of CMakeLists.txt, package.xml
- 
- catkin_create_pkg <package_name> [dep1] [dep2]
- 
- 
- 
- # Notes
- rospack find <package name>
- roscd <package name>		To change to a package dir
- pwd		Print working dir
- 
- 
- 
-*** PART 2 ***
 
